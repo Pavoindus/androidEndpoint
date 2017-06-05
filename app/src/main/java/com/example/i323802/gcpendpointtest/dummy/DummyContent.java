@@ -1,5 +1,9 @@
 package com.example.i323802.gcpendpointtest.dummy;
 
+import com.example.i323802.gcpendpointtest.model.Employee;
+import com.example.i323802.gcpendpointtest.model.EmployeeList;
+
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -9,7 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -38,13 +41,9 @@ public class DummyContent {
 
     static {
         // Add some sample items.
-        for (int i = 1; i <= COUNT; i++) {
-            addItem(createDummyItem(i));
-            try {
-                String str = getEmployees();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        ArrayList<EmployeeList> empList = getArrayListFromURL("https://endpoints-169618.appspot.com/gcp/employees");
+        for(EmployeeList el : empList) {
+            addItem(new DummyItem(el));
         }
     }
 
@@ -53,16 +52,10 @@ public class DummyContent {
         ITEM_MAP.put(item.id, item);
     }
 
-    private static DummyItem createDummyItem(int position) {
-        return new DummyItem(String.valueOf(position), getEmployeesFromURL(String.valueOf(position)), makeDetails(position));
-    }
-
     private static String makeDetails(int position) {
         StringBuilder builder = new StringBuilder();
-        builder.append("Details about Employee: ").append(position);
-        for (int i = 0; i < 5; i++) {
-            builder.append("\nMore details information here.");
-        }
+        builder.append("Details about Employee: \n");
+        builder.append(getEmployeeInfoFromURL("https://endpoints-169618.appspot.com/gcp/employee/" + position));
         return builder.toString();
     }
 
@@ -80,74 +73,109 @@ public class DummyContent {
             this.details = details;
         }
 
+        public DummyItem(EmployeeList el) {
+            this.id = el.getId().toString();
+            this.content = el.getName();
+            this.details = makeDetails(el.getId().intValue());
+        }
+
         @Override
         public String toString() {
             return content;
         }
     }
 
-    public static String getEmployees() throws IOException {
-        URL url = new URL("http://www.android.com/");
-        HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+    public static ArrayList<EmployeeList> getArrayListFromURL(String urlString) {
+
+        ArrayList<EmployeeList> arrayList = new ArrayList<>();
         try {
-            InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-            System.out.println(in.toString());
-        } finally {
-            urlConnection.disconnect();
+            HttpURLConnection urlConnection = null;
+
+            URL url = new URL(urlString);
+
+            urlConnection = (HttpURLConnection) url.openConnection();
+
+            urlConnection.setRequestMethod("GET");
+            urlConnection.setReadTimeout(10000 /* milliseconds */);
+            urlConnection.setConnectTimeout(15000 /* milliseconds */);
+
+            urlConnection.setDoOutput(true);
+
+            urlConnection.connect();
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(url.openStream()));
+
+            char[] buffer = new char[1024];
+
+            String jsonString = new String();
+
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line + "\n");
+            }
+            br.close();
+
+            jsonString = sb.toString();
+
+            System.out.println("JSON: " + jsonString);
+
+            JSONArray array = new JSONArray(jsonString);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject elem = (JSONObject) array.get(i);
+                EmployeeList el = new EmployeeList();
+                el.setId(elem.getLong("empId"));
+                el.setName(elem.getString("name"));
+                arrayList.add(el);
+                System.out.println(el);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return null;
+        return arrayList;
     }
 
-    public static String getEmployeesFromURL(String item){
-        String str = null;
-        JSONObject jsonObject = null;
-        try{
-            jsonObject = getJSONObjectFromURL("https://endpoints-169618.appspot.com/gcp/employee/" + item);
-            str = (String)jsonObject.get("name");
-            System.out.println(str);
-            // Parse your json here
+    public static Employee getEmployeeInfoFromURL(String urlString) {
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
+        ArrayList<EmployeeList> arrayList = new ArrayList<>();
+        Employee employee = null;
+        try {
+            HttpURLConnection urlConnection = null;
+
+            URL url = new URL(urlString);
+
+            urlConnection = (HttpURLConnection) url.openConnection();
+
+            urlConnection.setRequestMethod("GET");
+            urlConnection.setReadTimeout(10000 /* milliseconds */);
+            urlConnection.setConnectTimeout(15000 /* milliseconds */);
+
+            urlConnection.setDoOutput(true);
+
+            urlConnection.connect();
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(url.openStream()));
+
+            char[] buffer = new char[1024];
+
+            String jsonString = new String();
+
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line + "\n");
+            }
+            br.close();
+
+            jsonString = sb.toString();
+
+            System.out.println("JSON: " + jsonString);
+
+            JSONObject elem = new JSONObject(jsonString);
+            employee = new Employee(elem);
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        return str;
-    }
-
-    public static JSONObject getJSONObjectFromURL(String urlString) throws IOException, JSONException {
-
-        HttpURLConnection urlConnection = null;
-
-        URL url = new URL(urlString);
-
-        urlConnection = (HttpURLConnection) url.openConnection();
-
-        urlConnection.setRequestMethod("GET");
-        urlConnection.setReadTimeout(10000 /* milliseconds */);
-        urlConnection.setConnectTimeout(15000 /* milliseconds */);
-
-        urlConnection.setDoOutput(true);
-
-        urlConnection.connect();
-
-        BufferedReader br=new BufferedReader(new InputStreamReader(url.openStream()));
-
-        char[] buffer = new char[1024];
-
-        String jsonString = new String();
-
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = br.readLine()) != null) {
-            sb.append(line+"\n");
-        }
-        br.close();
-
-        jsonString = sb.toString();
-
-        System.out.println("JSON: " + jsonString);
-
-        return new JSONObject(jsonString);
+        return employee;
     }
 }
