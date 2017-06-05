@@ -1,8 +1,13 @@
 package com.example.i323802.gcpendpointtest.dummy;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
@@ -49,7 +54,7 @@ public class DummyContent {
     }
 
     private static DummyItem createDummyItem(int position) {
-        return new DummyItem(String.valueOf(position), "Employee " + position, makeDetails(position));
+        return new DummyItem(String.valueOf(position), getEmployeesFromURL(String.valueOf(position)), makeDetails(position));
     }
 
     private static String makeDetails(int position) {
@@ -91,5 +96,58 @@ public class DummyContent {
             urlConnection.disconnect();
         }
         return null;
+    }
+
+    public static String getEmployeesFromURL(String item){
+        String str = null;
+        JSONObject jsonObject = null;
+        try{
+            jsonObject = getJSONObjectFromURL("https://endpoints-169618.appspot.com/gcp/employee/" + item);
+            str = (String)jsonObject.get("name");
+            System.out.println(str);
+            // Parse your json here
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return str;
+    }
+
+    public static JSONObject getJSONObjectFromURL(String urlString) throws IOException, JSONException {
+
+        HttpURLConnection urlConnection = null;
+
+        URL url = new URL(urlString);
+
+        urlConnection = (HttpURLConnection) url.openConnection();
+
+        urlConnection.setRequestMethod("GET");
+        urlConnection.setReadTimeout(10000 /* milliseconds */);
+        urlConnection.setConnectTimeout(15000 /* milliseconds */);
+
+        urlConnection.setDoOutput(true);
+
+        urlConnection.connect();
+
+        BufferedReader br=new BufferedReader(new InputStreamReader(url.openStream()));
+
+        char[] buffer = new char[1024];
+
+        String jsonString = new String();
+
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = br.readLine()) != null) {
+            sb.append(line+"\n");
+        }
+        br.close();
+
+        jsonString = sb.toString();
+
+        System.out.println("JSON: " + jsonString);
+
+        return new JSONObject(jsonString);
     }
 }
